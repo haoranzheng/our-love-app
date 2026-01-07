@@ -7,6 +7,7 @@ import ReminderCard from "@/components/ReminderCard";
 import EventForm from "@/components/EventForm";
 import Timeline from "@/components/Timeline";
 import Toast from "@/components/Toast";
+import InstallGuide from "@/components/InstallGuide";
 import {
   START_DATE_STR,
   formatDate,
@@ -140,27 +141,17 @@ export default function Home() {
     }
   };
 
-  const handleDeleteEvent = async (index: number) => {
-    const eventToDelete = events[index];
-    
-    if (eventToDelete.isFixed) return;
-    if (!confirm("确定要删除这条记录吗？")) return;
-    
-    if (!eventToDelete.id) {
-       console.error("No ID found for event");
-       return;
-    }
-
+  const handleDeleteEvent = async (id: string) => {
     const { error } = await supabase
       .from('love_events')
       .delete()
-      .eq('id', eventToDelete.id);
+      .eq('id', id);
 
     if (error) {
       setToast({ message: '删除失败: ' + error.message, type: 'error' });
     } else {
       setToast({ message: '删除成功', type: 'success' });
-      fetchEvents();
+      setEvents(prev => prev.filter(e => e.id !== id));
     }
   };
   
@@ -199,6 +190,7 @@ export default function Home() {
         </div>
         
         <div className="right-panel flex flex-col gap-[20px]">
+          <InstallGuide />
           <EventForm onAdd={handleAddEvent} />
           {loading ? (
               <div className="text-center text-gray-400 py-10">加载回忆中...</div>

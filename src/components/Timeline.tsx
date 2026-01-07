@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { LoveEvent } from '@/types';
 import { formatDate } from '@/utils/date';
+import SwipeToDelete from './SwipeToDelete';
 
 interface TimelineProps {
   events: LoveEvent[];
-  onDelete: (index: number) => void;
+  onDelete: (id: string) => void;
 }
 
 export default function Timeline({ events, onDelete }: TimelineProps) {
@@ -64,45 +65,44 @@ export default function Timeline({ events, onDelete }: TimelineProps) {
           }
 
           return (
-            <div 
-              key={`${item.date}-${index}`} 
-              className={`timeline-item bg-white/90 mb-[15px] rounded-[16px] p-[15px_20px] transition-all duration-300 border-l-4 shadow-[0_2px_10px_rgba(0,0,0,0.03)] hover:-translate-y-[3px] hover:shadow-[0_8px_25px_rgba(255,117,140,0.15)] ${timeClass} flex flex-col gap-3`}
-            >
-              <div className="flex items-center justify-between w-full">
-                <div className="t-left">
-                    <h4 className="m-0 text-[16px] text-[#333]">
-                    {item.title} 
-                    {!item.isFixed && (
-                        <span 
-                        className="btn-del text-[12px] text-[#ccc] cursor-pointer ml-[10px] transition-colors duration-200 hover:text-[#ff4757]"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onDelete(index);
-                        }} 
-                        >
-                        删除
-                        </span>
+            <div key={`${item.date}-${index}`} className="mb-[15px]">
+                <SwipeToDelete 
+                    onDelete={() => item.id && onDelete(item.id)} 
+                    disabled={item.isFixed}
+                    className="rounded-[16px]"
+                >
+                    <div 
+                    className={`timeline-item bg-white/90 rounded-[16px] p-[15px_20px] transition-all duration-300 border-l-4 shadow-[0_2px_10px_rgba(0,0,0,0.03)] hover:-translate-y-[3px] hover:shadow-[0_8px_25px_rgba(255,117,140,0.15)] ${timeClass} flex flex-col gap-3`}
+                    >
+                    <div className="flex items-center justify-between w-full">
+                        <div className="t-left">
+                            <h4 className="m-0 text-[16px] text-[#333]">
+                            {item.title} 
+                            </h4>
+                            <p className="m-[5px_0_0_0] text-[13px] text-[#888]">{formatDate(itemDate)}</p>
+                        </div>
+                        <div className="t-right text-right min-w-[80px]">
+                            <div className="t-days text-[20px] font-bold text-[var(--primary-color)]">{diffText}</div>
+                            <div className="t-desc text-[12px] text-[#999]">{descText}</div>
+                        </div>
+                    </div>
+                    
+                    {/* Image Gallery */}
+                    {item.image_url && (
+                        <div className="w-full mt-2">
+                            <img 
+                                src={item.image_url} 
+                                alt="Event memory" 
+                                className="w-full h-48 object-cover rounded-xl cursor-pointer hover:opacity-95 transition-opacity border border-gray-100"
+                                onClick={(e) => {
+                                    e.stopPropagation(); // Prevent swipe when clicking image? No, preventing click propogation is fine.
+                                    setSelectedImage(item.image_url!);
+                                }}
+                            />
+                        </div>
                     )}
-                    </h4>
-                    <p className="m-[5px_0_0_0] text-[13px] text-[#888]">{formatDate(itemDate)}</p>
-                </div>
-                <div className="t-right text-right min-w-[80px]">
-                    <div className="t-days text-[20px] font-bold text-[var(--primary-color)]">{diffText}</div>
-                    <div className="t-desc text-[12px] text-[#999]">{descText}</div>
-                </div>
-              </div>
-              
-              {/* Image Gallery */}
-              {item.image_url && (
-                <div className="w-full mt-2">
-                    <img 
-                        src={item.image_url} 
-                        alt="Event memory" 
-                        className="w-full h-48 object-cover rounded-xl cursor-pointer hover:opacity-95 transition-opacity border border-gray-100"
-                        onClick={() => setSelectedImage(item.image_url!)}
-                    />
-                </div>
-              )}
+                    </div>
+                </SwipeToDelete>
             </div>
           );
         })}

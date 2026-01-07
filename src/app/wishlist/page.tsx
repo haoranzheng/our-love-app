@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/utils/supabase/client";
 import BubbleEffect from "@/components/BubbleEffect";
 import Toast from "@/components/Toast";
+import SwipeToDelete from "@/components/SwipeToDelete";
 import { useRouter } from "next/navigation";
 
 interface WishItem {
@@ -147,37 +148,36 @@ export default function WishlistPage() {
              <div className="text-center text-gray-400 py-10">加载愿望中...</div>
           ) : (
             wishes.map((wish) => (
-                <div
-                key={wish.id}
-                className={`group flex items-center p-4 bg-white/90 backdrop-blur-sm rounded-xl shadow-sm border border-white/50 transition-all ${
-                    wish.is_completed ? "opacity-60" : "hover:-translate-y-1 hover:shadow-md"
-                }`}
-                >
-                <div 
-                    onClick={() => toggleWish(wish.id, wish.is_completed)}
-                    className={`w-6 h-6 rounded-full border-2 mr-3 flex items-center justify-center cursor-pointer transition-colors ${
-                    wish.is_completed
-                        ? "bg-[#ff758c] border-[#ff758c]"
-                        : "border-gray-300 bg-white"
-                    }`}
-                >
-                    {wish.is_completed && (
-                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
-                    </svg>
-                    )}
-                </div>
-                
-                <span className={`flex-1 text-gray-700 ${wish.is_completed ? "line-through text-gray-400" : ""}`}>
-                    {wish.content}
-                </span>
-
-                <button 
-                    onClick={() => handleDeleteWish(wish.id)}
-                    className="text-gray-300 hover:text-red-400 p-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                </button>
+                <div key={wish.id}>
+                    <SwipeToDelete 
+                        onDelete={() => handleDeleteWish(wish.id)}
+                        className="rounded-xl shadow-sm border border-white/50 bg-white/90"
+                    >
+                        <div
+                        className={`group flex items-center p-4 backdrop-blur-sm transition-all ${
+                            wish.is_completed ? "opacity-60" : "hover:-translate-y-1"
+                        }`}
+                        >
+                        <div 
+                            onClick={() => toggleWish(wish.id, wish.is_completed)}
+                            className={`w-6 h-6 rounded-full border-2 mr-3 flex items-center justify-center cursor-pointer transition-colors ${
+                            wish.is_completed
+                                ? "bg-[#ff758c] border-[#ff758c]"
+                                : "border-gray-300 bg-white"
+                            }`}
+                        >
+                            {wish.is_completed && (
+                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                            </svg>
+                            )}
+                        </div>
+                        
+                        <span className={`flex-1 text-gray-700 ${wish.is_completed ? "line-through text-gray-400" : ""}`}>
+                            {wish.content}
+                        </span>
+                        </div>
+                    </SwipeToDelete>
                 </div>
             ))
           )}
