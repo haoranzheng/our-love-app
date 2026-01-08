@@ -42,6 +42,8 @@ interface Footprint {
 // Tianjin Wanda Plaza (WGS-84)
 const START_POINT_WGS84: [number, number] = [39.1414, 117.7655];
 
+const PLACEHOLDER_IMAGE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23fff0f5'/%3E%3Ctext x='50' y='55' font-size='40' text-anchor='middle' dominant-baseline='middle'%3E💗%3C/text%3E%3C/svg%3E";
+
 // Helper to convert WGS-84 (DB) to GCJ-02 (AMap Display)
 // Input: [lat, lng], Output: [lat, lng]
 const toDisplay = (lat: number, lng: number): [number, number] => {
@@ -94,6 +96,8 @@ export default function LeafletMap() {
   const [formTitle, setFormTitle] = useState("");
   const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0]);
   const [formDesc, setFormDesc] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [loading, setLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false); // Debounce delete
@@ -248,6 +252,7 @@ export default function LeafletMap() {
     e.preventDefault();
     if (!newCoords) return;
 
+    // Optional: Image Compression or Resize could go here
     if (loading) return; // Prevent double submission
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
@@ -256,6 +261,40 @@ export default function LeafletMap() {
         setToast({ message: "请先登录", type: "error" });
         setLoading(false);
         return;
+    }
+
+    let imageUrl = null;
+
+    if (selectedFile) {
+        try {
+            // Toast for upload start
+            setToast({ message: "正在上传照片...", type: "success" });
+            
+            const fileExt = selectedFile.name.split('.').pop();
+            const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('footprints')
+                .upload(fileName, selectedFile, {
+                    cacheControl: '3600',
+                    upsert: false
+                });
+
+            if (uploadError) {
+                throw uploadError;
+            }
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('footprints')
+                .getPublicUrl(fileName);
+            
+            imageUrl = publicUrl;
+        } catch (error: any) {
+            console.error("Upload error:", error);
+            setToast({ message: "图片上传失败: " + error.message, type: "error" });
+            setLoading(false);
+            return;
+        }
     }
 
     const { error } = await supabase
@@ -267,7 +306,8 @@ export default function LeafletMap() {
           latitude: newCoords.lat,
           longitude: newCoords.lng,
           visit_date: formDate,
-          user_id: user.id
+          user_id: user.id,
+          image_url: imageUrl
         }
       ]);
 
@@ -278,9 +318,21 @@ export default function LeafletMap() {
       setShowForm(false);
       setFormTitle("");
       setFormDesc("");
+      setSelectedFile(null);
       fetchFootprints();
     }
     setLoading(false);
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (e.target.files && e.target.files[0]) {
+          const file = e.target.files[0];
+          setSelectedFile(file);
+          
+          // Create local preview
+          const objectUrl = URL.createObjectURL(file);
+          setPreviewUrl(objectUrl);
+      }
   };
 
   const handleFootprintClick = (fp: Footprint) => {
@@ -444,9 +496,13 @@ export default function LeafletMap() {
                         <h3 className="font-bold text-gray-800">{fp.title}</h3>
                         <p className="text-xs text-[#ff758c] mb-1">{formatDate(new Date(fp.visit_date))}</p>
                         {fp.description && <p className="text-sm text-gray-600 mb-2">{fp.description}</p>}
-                        {fp.image_url && (
-                            <img src={fp.image_url} alt={fp.title} className="w-full h-24 object-cover rounded-lg" />
-                        )}
+                        
+                        <img 
+                            src={fp.image_url || PLACEHOLDER_IMAGE} 
+                            alt={fp.title} 
+                            className="w-full h-24 object-cover rounded-lg mb-2 border border-pink-100"
+                        />
+                        
                         <div className="mt-2 border-t border-gray-100 pt-2">
                             <button 
                                 onClick={() => handleDeleteFootprint(fp.id, fp.visit_date)}
@@ -525,6 +581,40 @@ export default function LeafletMap() {
                             placeholder="那天我们..."
                         />
                     </div>
+
+                    <div>
+                        <label className="block text-xs text-gray-500 mb-1">照片 (可选)</label>
+                        <div className="relative">
+                            <input 
+                                type="file" 
+                                accept="image/*"
+                                onChange={handleFileSelect}
+                                className="w-full px-4 py-2 rounded-xl border border-pink-100 bg-white focus:border-[#ff758c] focus:outline-none text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100"
+                            />
+                        </div>
+                        {previewUrl && (
+                            <div className="mt-3 relative w-full h-32 rounded-xl overflow-hidden border border-pink-100">
+                                <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setSelectedFile(null);
+                                        setPreviewUrl(null);
+                                    }}
+                                    className="absolute top-1 right-1 bg-black/50 text-white rounded-full p-1 hover:bg-black/70"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Coordinate Debug Info (Reassuring User) */}
+                    {newCoords && (
+                        <div className="text-[10px] text-gray-400 text-center font-mono">
+                            位置坐标: {newCoords.lat.toFixed(6)}, {newCoords.lng.toFixed(6)}
+                        </div>
+                    )}
 
                     <div className="flex gap-3 mt-2">
                         <button 
