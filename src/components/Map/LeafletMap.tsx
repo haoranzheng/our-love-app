@@ -101,6 +101,7 @@ export default function LeafletMap() {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [loading, setLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false); // Debounce delete
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null); // For custom delete modal
   const [isLocating, setIsLocating] = useState(false);
 
   const supabase = createClient();
@@ -213,38 +214,39 @@ export default function LeafletMap() {
       }
   };
 
-  const handleDeleteFootprint = async (id: string, visitDate: string) => {
+  const onRequestDelete = (id: string, visitDate: string) => {
       // 1. Special Protection for Start Point
       if (visitDate === '2025-10-08') {
           setToast({ message: "这是故事的起点，无法删除 ❤️", type: "error" });
           return;
       }
+      // 2. Show Confirmation Modal
+      setDeleteTargetId(id);
+  };
 
-      // 2. Debounce Check
-      if (isDeleting) return;
+  const onConfirmDelete = async () => {
+      if (!deleteTargetId || isDeleting) return;
 
-      // 3. Confirm Dialog Logic
-      if (window.confirm("确定要删除这个足迹吗？")) {
-          setIsDeleting(true);
+      setIsDeleting(true);
+      
+      try {
+          const { error } = await supabase.from('footprints').delete().eq('id', deleteTargetId);
           
-          try {
-              const { error } = await supabase.from('footprints').delete().eq('id', id);
-              
-              if (error) {
-                  throw error;
-              } else {
-                  setToast({ message: "足迹已删除", type: "success" });
-                  setFootprints(prev => prev.filter(fp => fp.id !== id));
-                  if (selectedFootprintId === id) {
-                      setSelectedFootprintId(null);
-                  }
+          if (error) {
+              throw error;
+          } else {
+              setToast({ message: "足迹已删除", type: "success" });
+              setFootprints(prev => prev.filter(fp => fp.id !== deleteTargetId));
+              if (selectedFootprintId === deleteTargetId) {
+                  setSelectedFootprintId(null);
               }
-          } catch (err) {
-              setToast({ message: "删除失败，请重试", type: "error" });
-              console.error(err);
-          } finally {
-              setIsDeleting(false);
+              setDeleteTargetId(null);
           }
+      } catch (err) {
+          setToast({ message: "删除失败，请重试", type: "error" });
+          console.error(err);
+      } finally {
+          setIsDeleting(false);
       }
   };
 
@@ -505,13 +507,10 @@ export default function LeafletMap() {
                         
                         <div className="mt-2 border-t border-gray-100 pt-2">
                             <button 
-                                onClick={() => handleDeleteFootprint(fp.id, fp.visit_date)}
-                                disabled={isDeleting}
-                                className={`text-xs font-medium px-2 py-1 rounded transition-colors ${
-                                    isDeleting ? 'text-gray-300 cursor-not-allowed' : 'text-red-400 hover:text-red-600 hover:bg-red-50'
-                                }`}
+                                onClick={() => onRequestDelete(fp.id, fp.visit_date)}
+                                className="text-xs font-medium px-2 py-1 rounded transition-colors text-red-400 hover:text-red-600 hover:bg-red-50"
                             >
-                                {isDeleting ? '删除中...' : '删除此足迹'}
+                                删除此足迹
                             </button>
                         </div>
                     </div>
@@ -633,6 +632,34 @@ export default function LeafletMap() {
                         </button>
                     </div>
                 </form>
+            </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteTargetId && (
+        <div className="absolute inset-0 z-[1000] flex items-center justify-center bg-black/20 backdrop-blur-sm p-4 animate-in fade-in zoom-in duration-200">
+            <div className="bg-white/90 backdrop-blur-md rounded-2xl shadow-2xl p-6 w-full max-w-sm border border-white/60">
+                <h2 className="text-xl font-bold text-gray-800 mb-2 text-center">确认删除</h2>
+                <p className="text-sm text-gray-600 text-center mb-6">删除后无法恢复，确定要删除这个美好的回忆吗？</p>
+                
+                <div className="flex gap-3">
+                    <button 
+                        type="button" 
+                        onClick={() => setDeleteTargetId(null)}
+                        className="flex-1 py-2 rounded-xl border border-gray-200 text-gray-500 font-medium active:scale-95 transition-transform"
+                    >
+                        取消
+                    </button>
+                    <button 
+                        type="button" 
+                        onClick={onConfirmDelete}
+                        disabled={isDeleting}
+                        className="flex-1 py-2 rounded-xl bg-red-400 text-white font-bold shadow-md active:scale-95 transition-transform disabled:opacity-50"
+                    >
+                        {isDeleting ? '删除中...' : '确认删除'}
+                    </button>
+                </div>
             </div>
         </div>
       )}
