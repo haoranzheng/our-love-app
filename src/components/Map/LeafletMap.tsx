@@ -97,6 +97,7 @@ export default function LeafletMap() {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [loading, setLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false); // Debounce delete
+  const [isLocating, setIsLocating] = useState(false);
 
   const supabase = createClient();
 
@@ -117,6 +118,63 @@ export default function LeafletMap() {
   useEffect(() => {
     fetchFootprints();
   }, [fetchFootprints]);
+
+  const handleGPSLocation = () => {
+      if (isLocating) return;
+      
+      if (!navigator.geolocation) {
+          setToast({ message: "您的浏览器不支持地理定位", type: "error" });
+          return;
+      }
+
+      setIsLocating(true);
+      setToast({ message: "正在获取位置...", type: "success" });
+
+      navigator.geolocation.getCurrentPosition(
+          (position) => {
+              const { latitude, longitude } = position.coords;
+              
+              // GPS (WGS-84) -> Display (GCJ-02) for flyTo
+              const displayCoords = toDisplay(latitude, longitude);
+              
+              // Set Storage Coords (WGS-84)
+              setNewCoords({ lat: latitude, lng: longitude });
+              
+              // Update View
+              setFlyToCoords(displayCoords);
+              
+              // Pre-fill form
+              setFormTitle("我的位置 " + new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}));
+              setFormDate(new Date().toISOString().split('T')[0]);
+              setShowForm(true);
+              
+              setToast({ message: "定位成功！📍", type: "success" });
+              setIsLocating(false);
+          },
+          (error) => {
+              console.error("Geolocation error:", error);
+              let msg = "定位失败";
+              switch(error.code) {
+                  case error.PERMISSION_DENIED:
+                      msg = "定位请求被拒绝，请在系统设置中允许浏览器使用位置权限";
+                      break;
+                  case error.POSITION_UNAVAILABLE:
+                      msg = "位置信息不可用";
+                      break;
+                  case error.TIMEOUT:
+                      msg = "获取位置超时";
+                      break;
+              }
+              setToast({ message: msg, type: "error" });
+              setIsLocating(false);
+          },
+          {
+              enableHighAccuracy: true,
+              timeout: 10000,
+              maximumAge: 0
+          }
+      );
+  };
 
   const handleMapClick = (lat: number, lng: number) => {
     // Only trigger add form if not dragging existing marker
@@ -253,6 +311,26 @@ export default function LeafletMap() {
             <line x1="3" y1="6" x2="21" y2="6"></line>
             <line x1="3" y1="18" x2="21" y2="18"></line>
         </svg>
+      </button>
+
+      {/* GPS Location Button */}
+      <button 
+        onClick={handleGPSLocation}
+        disabled={isLocating}
+        className={`absolute bottom-36 right-4 z-[500] bg-white/90 backdrop-blur p-3 rounded-full shadow-lg text-[#ff758c] hover:scale-105 transition-transform ${isLocating ? 'animate-pulse opacity-80' : ''}`}
+        title="定位到当前位置"
+      >
+        {isLocating ? (
+             <svg className="animate-spin h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+             </svg>
+        ) : (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon>
+            </svg>
+        )}
       </button>
 
       {/* Sidebar */}
