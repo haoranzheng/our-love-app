@@ -124,7 +124,7 @@ export default function SwipeToDelete({
 
       {/* Foreground Content */}
       <div 
-        className="relative z-10 transition-transform duration-200 ease-out h-full"
+        className="relative z-10 transition-transform duration-200 ease-out h-full touch-pan-y"
         style={{ transform: `translateX(${offset}px)` }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}

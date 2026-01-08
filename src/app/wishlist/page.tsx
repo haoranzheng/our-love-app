@@ -151,7 +151,7 @@ export default function WishlistPage() {
                 <div key={wish.id}>
                     <SwipeToDelete 
                         onDelete={() => handleDeleteWish(wish.id)}
-                        className="rounded-xl shadow-sm border border-white/50 bg-white/90"
+                        className="rounded-xl shadow-sm border border-white/40 bg-white/80"
                     >
                         <div
                         className={`group flex items-center p-4 backdrop-blur-sm transition-all ${

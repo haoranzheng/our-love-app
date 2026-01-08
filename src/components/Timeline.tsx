@@ -72,7 +72,7 @@ export default function Timeline({ events, onDelete }: TimelineProps) {
                     className="rounded-[16px]"
                 >
                     <div 
-                    className={`timeline-item bg-white/90 rounded-[16px] p-[15px_20px] transition-all duration-300 border-l-4 shadow-[0_2px_10px_rgba(0,0,0,0.03)] hover:-translate-y-[3px] hover:shadow-[0_8px_25px_rgba(255,117,140,0.15)] ${timeClass} flex flex-col gap-3`}
+                    className={`timeline-item bg-white/80 rounded-[16px] p-[15px_20px] transition-all duration-300 border border-white/40 shadow-[0_2px_10px_rgba(0,0,0,0.03)] hover:-translate-y-[3px] hover:shadow-[0_8px_25px_rgba(255,117,140,0.15)] ${timeClass} flex flex-col gap-3 backdrop-blur-sm`}
                     >
                     <div className="flex items-center justify-between w-full">
                         <div className="t-left">
@@ -93,7 +93,7 @@ export default function Timeline({ events, onDelete }: TimelineProps) {
                             <img 
                                 src={item.image_url} 
                                 alt="Event memory" 
-                                className="w-full h-48 object-cover rounded-xl cursor-pointer hover:opacity-95 transition-opacity border border-gray-100"
+                                className="w-full h-48 object-cover rounded-xl cursor-pointer hover:opacity-95 transition-all duration-300 border border-gray-100 hover:scale-105"
                                 onClick={(e) => {
                                     e.stopPropagation(); // Prevent swipe when clicking image? No, preventing click propogation is fine.
                                     setSelectedImage(item.image_url!);
