@@ -7,6 +7,7 @@ import L from 'leaflet';
 import { createClient } from '@/utils/supabase/client';
 import Toast from '@/components/Toast';
 import { formatDate } from '@/utils/date';
+import { wgs84togcj02, gcj02towgs84 } from '@/utils/coordTransform';
 
 // --- Custom Icons ---
 
@@ -38,7 +39,24 @@ interface Footprint {
   image_url?: string;
 }
 
-const TIANJIN_COORDS: [number, number] = [39.13, 117.20];
+// Tianjin Wanda Plaza (WGS-84)
+const START_POINT_WGS84: [number, number] = [39.1414, 117.7655];
+
+// Helper to convert WGS-84 (DB) to GCJ-02 (AMap Display)
+// Input: [lat, lng], Output: [lat, lng]
+const toDisplay = (lat: number, lng: number): [number, number] => {
+    const [gLng, gLat] = wgs84togcj02(lng, lat);
+    return [gLat, gLng];
+};
+
+// Helper to convert GCJ-02 (AMap Click) to WGS-84 (DB Storage)
+// Input: [lat, lng], Output: [lat, lng]
+const toStorage = (lat: number, lng: number): [number, number] => {
+    const [wLng, wLat] = gcj02towgs84(lng, lat);
+    return [wLat, wLng];
+};
+
+const START_POINT_DISPLAY = toDisplay(START_POINT_WGS84[0], START_POINT_WGS84[1]);
 
 // --- Sub-components ---
 
@@ -103,7 +121,10 @@ export default function LeafletMap() {
   const handleMapClick = (lat: number, lng: number) => {
     // Only trigger add form if not dragging existing marker
     // Leaflet click event propogation can be tricky, relying on map container click
-    setNewCoords({ lat, lng });
+    
+    // Convert Map Click (GCJ-02) -> Storage (WGS-84)
+    const [sLat, sLng] = toStorage(lat, lng);
+    setNewCoords({ lat: sLat, lng: sLng });
     setShowForm(true);
   };
 
@@ -111,10 +132,13 @@ export default function LeafletMap() {
       const marker = e.target;
       const position = marker.getLatLng();
       const { lat, lng } = position;
+      
+      // Convert Map Drag (GCJ-02) -> Storage (WGS-84)
+      const [sLat, sLng] = toStorage(lat, lng);
 
       const { error } = await supabase
           .from('footprints')
-          .update({ latitude: lat, longitude: lng })
+          .update({ latitude: sLat, longitude: sLng })
           .eq('id', id);
 
       if (error) {
@@ -122,7 +146,8 @@ export default function LeafletMap() {
           fetchFootprints(); // Revert
       } else {
           setToast({ message: "位置已更新", type: "success" });
-          setFootprints(prev => prev.map(fp => fp.id === id ? { ...fp, latitude: lat, longitude: lng } : fp));
+          // Update local state with WGS-84 coords
+          setFootprints(prev => prev.map(fp => fp.id === id ? { ...fp, latitude: sLat, longitude: sLng } : fp));
       }
   };
 
@@ -201,7 +226,9 @@ export default function LeafletMap() {
   };
 
   const handleFootprintClick = (fp: Footprint) => {
-      setFlyToCoords([fp.latitude, fp.longitude]);
+      // Fly to Display Coordinates (GCJ-02)
+      const displayCoords = toDisplay(fp.latitude, fp.longitude);
+      setFlyToCoords(displayCoords);
       setSelectedFootprintId(fp.id);
       // Close sidebar on mobile after selection for better view
       if (window.innerWidth < 768) {
@@ -209,8 +236,8 @@ export default function LeafletMap() {
       }
   };
 
-  // Prepare line coordinates
-  const polylinePositions = footprints.map(fp => [fp.latitude, fp.longitude] as [number, number]);
+  // Prepare line coordinates (WGS-84 -> GCJ-02)
+  const polylinePositions = footprints.map(fp => toDisplay(fp.latitude, fp.longitude));
 
   return (
     <div className="w-full h-full relative flex flex-col">
@@ -269,15 +296,22 @@ export default function LeafletMap() {
       </div>
 
       <MapContainer 
-        center={TIANJIN_COORDS} 
-        zoom={11} 
-        style={{ height: '100%', width: '100%', zIndex: 0, flex: 1 }}
+        center={START_POINT_DISPLAY} 
+        zoom={13} 
+        style={{ height: '100%', width: '100%', zIndex: 0, flex: 1, touchAction: 'none' }}
         zoomControl={false}
       >
         <MapController coords={flyToCoords} />
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.amap.com/">高德地图</a>'
+          url="https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}"
+          subdomains={['1', '2', '3', '4']}
+          eventHandlers={{
+            tileerror: (e) => {
+                console.warn("Map tile load error:", e);
+                // Optional: Fallback logic or user notification could go here
+            }
+          }}
         />
         
         <MapEvents onMapClick={handleMapClick} />
@@ -298,7 +332,7 @@ export default function LeafletMap() {
         {/* Start Point Marker (Anniversary) */}
         {/* You can adjust coordinates to your actual start location */}
         <Marker 
-            position={TIANJIN_COORDS} 
+            position={START_POINT_DISPLAY} 
             icon={goldenStarIcon}
             draggable={false} // Fixed position
         >
@@ -312,10 +346,12 @@ export default function LeafletMap() {
         </Marker>
 
         {/* User Footprints */}
-        {footprints.map(fp => (
+        {footprints.map(fp => {
+            const displayPos = toDisplay(fp.latitude, fp.longitude);
+            return (
             <Marker 
                 key={fp.id} 
-                position={[fp.latitude, fp.longitude]} 
+                position={displayPos} 
                 icon={pinkHeartIcon}
                 draggable={true} // Enable drag always, but logic could be refined
                 eventHandlers={{
@@ -347,11 +383,11 @@ export default function LeafletMap() {
                     </div>
                 </Popup>
             </Marker>
-        ))}
+        )})}
 
         {/* Temporary Marker for New Selection */}
         {showForm && newCoords && (
-            <Marker position={[newCoords.lat, newCoords.lng]} icon={pinkHeartIcon} opacity={0.6} />
+            <Marker position={toDisplay(newCoords.lat, newCoords.lng)} icon={pinkHeartIcon} opacity={0.6} />
         )}
       </MapContainer>
 
