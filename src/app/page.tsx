@@ -8,6 +8,7 @@ import EventForm from "@/components/EventForm";
 import Timeline from "@/components/Timeline";
 import Toast from "@/components/Toast";
 import InstallGuide from "@/components/InstallGuide";
+import ChefStatusIcon from "@/components/ChefStatusIcon";
 import {
   START_DATE_STR,
   formatDate,
@@ -170,7 +171,8 @@ export default function Home() {
       
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       
-      <div className="absolute top-4 right-4 z-20">
+      <div className="absolute top-4 right-4 z-20 flex items-center gap-3">
+          <ChefStatusIcon />
           <button 
             onClick={handleLogout}
             className="text-xs text-gray-400 hover:text-[#ff758c] transition-colors bg-white/50 px-3 py-1 rounded-full backdrop-blur-sm"
