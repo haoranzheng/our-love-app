@@ -5,6 +5,7 @@ import BottomNav from "@/components/BottomNav";
 
 import DynamicBackground from "@/components/DynamicBackground";
 import HolidayManager from "@/components/HolidayManager";
+import ConfettiEffect from "@/components/ConfettiEffect";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -47,6 +48,7 @@ export default function RootLayout({
       >
         <DynamicBackground />
         <HolidayManager />
+        <ConfettiEffect />
         {children}
         <BottomNav />
       </body>

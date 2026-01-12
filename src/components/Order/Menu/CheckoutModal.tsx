@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/utils/supabase/client'
-import { Loader2, X, Send, ShoppingBag } from 'lucide-react'
+import { Loader2, X, Send, ShoppingBag, AlertCircle } from 'lucide-react'
 import { CartItem } from './types'
 
 interface CheckoutModalProps {
@@ -16,23 +16,37 @@ interface CheckoutModalProps {
 export default function CheckoutModal({ isOpen, onClose, cart, onSuccess }: CheckoutModalProps) {
   const [note, setNote] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [balance, setBalance] = useState<number | null>(null)
+  const [loadingBalance, setLoadingBalance] = useState(false)
   const supabase = createClient()
   
   const totalPrice = cart.reduce((acc, i) => acc + i.count * i.price, 0)
+  const isBalanceSufficient = balance !== null && balance >= totalPrice
+
+  useEffect(() => {
+    if (isOpen) {
+      const fetchBalance = async () => {
+        setLoadingBalance(true)
+        const { data } = await supabase.from('love_points').select('current_balance').single()
+        if (data) setBalance(data.current_balance)
+        setLoadingBalance(false)
+      }
+      fetchBalance()
+    }
+  }, [isOpen])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
     
     try {
-      const { error } = await supabase.from('meal_orders').insert({
-        dish_name: `点单合集 (${cart.length}样)`, 
-        requester: '宝宝', // TODO: Fetch real user name or from context
-        status: 'pending',
-        note: note,
-        items: cart,
-        total_price: totalPrice,
-        order_type: 'menu'
+      const { error } = await supabase.rpc('create_order_with_payment', {
+        p_dish_name: `点单合集 (${cart.length}样)`,
+        p_requester: '宝宝',
+        p_note: note,
+        p_items: cart,
+        p_total_price: totalPrice,
+        p_order_type: 'menu'
       })
 
       if (error) throw error
@@ -41,9 +55,9 @@ export default function CheckoutModal({ isOpen, onClose, cart, onSuccess }: Chec
       onSuccess()
       onClose()
       alert('订单发送成功！主厨马上就到！')
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error placing order:', error)
-      alert('下单失败，请重试 😭')
+      alert(error.message || '下单失败，请重试 😭')
     } finally {
       setIsSubmitting(false)
     }
@@ -94,6 +108,27 @@ export default function CheckoutModal({ isOpen, onClose, cart, onSuccess }: Chec
               </div>
             </div>
 
+            {/* Balance Check */}
+            <div className="mb-4">
+              {loadingBalance ? (
+                <div className="text-xs text-gray-400 flex items-center gap-1">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  正在校验余额...
+                </div>
+              ) : (
+                <div className={`text-sm flex items-center gap-1 ${isBalanceSufficient ? 'text-green-600' : 'text-red-500'}`}>
+                  {isBalanceSufficient ? (
+                    '✅ 余额充足'
+                  ) : (
+                    <>
+                      <AlertCircle className="w-4 h-4" />
+                      余额不足 (现有 {balance} pts)，快去向主厨撒娇~
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">给主厨的备注</label>
@@ -107,11 +142,14 @@ export default function CheckoutModal({ isOpen, onClose, cart, onSuccess }: Chec
 
               <button
                 type="submit"
-                disabled={isSubmitting}
-                className="w-full py-3 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-xl font-bold shadow-lg hover:shadow-pink-500/30 transition-all flex items-center justify-center gap-2 disabled:opacity-70"
+                disabled={isSubmitting || !isBalanceSufficient}
+                className={`w-full py-3 text-white rounded-xl font-bold shadow-lg transition-all flex items-center justify-center gap-2 
+                  ${isSubmitting || !isBalanceSufficient 
+                    ? 'bg-gray-300 cursor-not-allowed' 
+                    : 'bg-gradient-to-r from-pink-500 to-rose-500 hover:shadow-pink-500/30'}`}
               >
                 {isSubmitting ? <Loader2 className="animate-spin w-5 h-5" /> : <Send className="w-5 h-5" />}
-                立即下单
+                {isBalanceSufficient ? '立即下单' : '爱意值不足'}
               </button>
             </form>
           </motion.div>

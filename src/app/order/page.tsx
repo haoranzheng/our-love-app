@@ -7,6 +7,8 @@ import { MealOrder } from '@/components/Order/types'
 import MenuOrdering from '@/components/Order/Menu/MenuOrdering'
 import ChefDashboard from '@/components/Order/ChefDashboard'
 import MyOrderList from '@/components/Order/MyOrderList'
+import LoveDashboard from '@/components/Order/LoveDashboard'
+import SavingsStats from '@/components/Order/SavingsStats'
 import { Utensils, Heart } from 'lucide-react'
 
 export default function OrderPage() {
@@ -95,6 +97,7 @@ export default function OrderPage() {
       </div>
 
       <main className="max-w-md mx-auto px-4 py-6">
+        <LoveDashboard />
         <AnimatePresence mode="wait">
           {loading ? (
             <motion.div
@@ -116,6 +119,7 @@ export default function OrderPage() {
             >
               <MenuOrdering />
               <MyOrderList orders={orders} />
+              <SavingsStats />
             </motion.div>
           ) : (
             <motion.div
