@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { LayoutDashboard, UtensilsCrossed, History, Settings } from 'lucide-react'
+import { LayoutDashboard, UtensilsCrossed, History, Settings, ShoppingBag } from 'lucide-react'
 import DishManager from './components/DishManager'
+import OrderManager from './components/OrderManager'
 
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<'dishes' | 'orders'>('dishes')

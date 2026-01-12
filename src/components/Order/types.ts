@@ -4,5 +4,6 @@ export interface MealOrder {
   requester: string
   status: 'pending' | 'cooking' | 'delivered' | 'cancelled'
   note: string | null
+  order_type?: 'menu' | 'custom'
   created_at: string
 }
