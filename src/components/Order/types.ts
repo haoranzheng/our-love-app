@@ -4,6 +4,8 @@ export interface MealOrder {
   requester: string
   status: 'pending' | 'cooking' | 'delivered' | 'cancelled'
   note: string | null
+  items?: any[] // JSONB content
+  total_price?: number
   order_type?: 'menu' | 'custom'
   created_at: string
 }

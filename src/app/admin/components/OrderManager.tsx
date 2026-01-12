@@ -12,7 +12,9 @@ import {
   Filter, 
   ShoppingBag, 
   MessageSquare,
-  User
+  User,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -44,6 +46,47 @@ function StatusBadge({ status }: { status: MealOrder['status'] }) {
       <Icon className="w-3.5 h-3.5" />
       {label}
     </span>
+  )
+}
+
+function OrderItemDetail({ items }: { items: any[] }) {
+  const [isExpanded, setIsExpanded] = useState(false)
+
+  if (!items || items.length === 0) return null
+
+  return (
+    <div className="mt-2">
+      <button 
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="text-xs font-medium text-pink-600 flex items-center gap-1 hover:bg-pink-50 px-2 py-1 rounded-lg transition-colors"
+      >
+        {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+        共 {items.reduce((acc, i) => acc + i.count, 0)} 件菜品明细
+      </button>
+      
+      <AnimatePresence>
+        {isExpanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="bg-gray-50 rounded-lg p-3 mt-2 space-y-2 text-sm text-gray-700 border border-gray-100">
+              {items.map((item, idx) => (
+                <div key={idx} className="flex justify-between items-center border-b border-gray-100 last:border-0 pb-1 last:pb-0">
+                  <span className="font-medium">{item.name}</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-gray-500 text-xs">x{item.count}</span>
+                    <span className="text-pink-500 font-bold text-xs">❤️ {item.price * item.count}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   )
 }
 
@@ -188,7 +231,7 @@ export default function OrderManager() {
                   <div className="space-y-2">
                     <div className="flex items-center gap-3">
                       <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">
-                        {order.dish_name}
+                        {order.items && order.items.length > 0 ? '点单合集' : order.dish_name}
                         {order.order_type === 'custom' && (
                           <span className="text-xs bg-purple-100 text-purple-600 px-2 py-0.5 rounded-full border border-purple-200">
                             定制
@@ -198,7 +241,11 @@ export default function OrderManager() {
                       <StatusBadge status={order.status} />
                     </div>
                     
-                    <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
+                    {order.items && order.items.length > 0 && (
+                      <OrderItemDetail items={order.items} />
+                    )}
+                    
+                    <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 mt-1">
                       <span className="flex items-center gap-1.5">
                         <User className="w-4 h-4" />
                         {order.requester}
